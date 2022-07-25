@@ -2,24 +2,18 @@
 # -*- coding: utf-8 -*-
 
 """ Main file. Run from here. """
-
+import logging
 import dist_utils
 import import_file
 from classes import Repository, Movie, Rating
 
+logging.basicConfig(level=logging.DEBUG)
+
 repository = Repository()
 
-
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-
-    # TODO review this part
-    try:
-        repository.import_movies()
-        repository.import_ratings()
-
-    except Exception as e:
-        print(e)
+def init_repository():
+    repository.import_movies()
+    repository.import_ratings()
 
     if not repository.movies:
         print(dist_utils.msg_box("You movie repository is empty. You will need to import data."))
@@ -49,17 +43,86 @@ if __name__ == '__main__':
                 import_file.import_and_convert_tsv("rating.csv", Rating, repository)
                 repository.import_ratings()
 
-    # Select search type
-    search_type_choices = ["Title", "Year", "Rating"]
-    search_type = dist_utils.ask_selection(
-        "What criteria would you like to use for your search?",
-        dist_utils.generate_answer_selector(search_type_choices),
-        dist_utils.generate_answer_selector_description(search_type_choices)
-    )
 
-    if search_type == "Title":
-        title_string = input(
-            "Please enter the title (or part of it) of the movie(s) you are searching for.\n")
-        title_result = repository.search_title(title_string)
-        for title in title_result:
-            print(title)
+def movie_search():
+    keep_searching = True
+    while keep_searching:
+        search_type_choices = ["Title", "Year", "Rating"]
+        primary_search_type = current_search_type = dist_utils.ask_selection(
+            "What criteria would you like to use for your search?",
+            dist_utils.generate_answer_selector(search_type_choices),
+            dist_utils.generate_answer_selector_description(search_type_choices)
+        )
+        search_types = [primary_search_type]
+
+        while True:
+            search_type_choices.pop(search_type_choices.index(current_search_type))
+            if not search_types:
+                break
+            add_criteria = dist_utils.ask_yes_no("Do you want to add a criteria to your search?")
+            if not add_criteria:
+                break
+            current_search_type = dist_utils.ask_selection(
+                "What additional criteria would you like to use for your search?",
+                dist_utils.generate_answer_selector(search_type_choices),
+                dist_utils.generate_answer_selector_description(search_type_choices)
+            )
+            search_types.append(current_search_type)
+
+        result = []
+        if "title" in search_types:
+            title_string = input(
+                "Please enter the [Title] (or part of it) of the movie(s) you are searching for.\n")
+            result = repository.search_title(title_string)
+
+        if "Year" in search_types:
+            boundary_types = ["Lower", "Upper", "Both"]
+            min_year = max_year = None
+            selected_boundary = dist_utils.ask_selection(
+                "What boundary do you wish to specify for your [Year] criteria?",
+                dist_utils.generate_answer_selector(boundary_types),
+                dist_utils.generate_answer_selector_description(boundary_types)
+            )
+            if selected_boundary in ["Lower", "Both"]:
+                min_year = dist_utils.prompt_number(
+                    "Please specify the LOWER boundary of your [Year] criteria.\n")
+            if selected_boundary in ["Upper", "Both"]:
+                max_year = dist_utils.prompt_number(
+                    "Please specify the UPPER boundary of your [Year] criteria.\n")
+
+            print(min_year, type(min_year), max_year, type(max_year))
+            result = repository.search_year(min_year, max_year, result)
+
+        if "Rating" in search_types:
+            boundary_types = ["Lower", "Upper", "Both"]
+            min_rating = max_rating = None
+            selected_boundary = dist_utils.ask_selection(
+                "What boundary do you wish to specify for your [Rating] criteria?",
+                dist_utils.generate_answer_selector(boundary_types),
+                dist_utils.generate_answer_selector_description(boundary_types)
+            )
+            if selected_boundary in ["Lower", "Both"]:
+                min_year = dist_utils.prompt_number(
+                    "Please specify the LOWER boundary of your [Rating] criteria.\n", float)
+            if selected_boundary in ["Upper", "Both"]:
+                max_year = dist_utils.prompt_number(
+                    "Please specify the UPPER boundary of your [Rating] criteria.\n", float)
+
+            result = repository.search_rating(min_rating, max_rating, result)
+
+        # Implement quicksort
+
+        for i, movie in enumerate(result):
+            print(movie)
+            if (i + 1) % 5 == 0:
+                dist_utils.press_to_continue()
+
+        keep_searching = dist_utils.ask_yes_no("Do you wish to make another search?")
+
+    print("Thank you for suing Movie Search!")
+
+
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+    init_repository()
+    movie_search()

@@ -3,6 +3,7 @@
 
 """ Contain the Repository class and Movie definition """
 import csv
+from random import randrange
 from pathlib import Path
 from typing import NamedTuple, Optional
 
@@ -38,7 +39,7 @@ class Movie(NamedTuple):
         strings = [pad, title, genre]
         for extra_info in [adult, rating]:
             if extra_info:
-                strings += extra_info
+                strings.append(extra_info)
 
         return "\n".join(strings + [""])
 
@@ -86,10 +87,93 @@ class Repository:
                 row["uid"] = row.pop("tconst")
                 self.add_rating(Rating(**row))
 
-    def search_title(self, title) -> list[Movie]:
-        """ Allow to search if string is in  """
-        result = []
-        for movie in self.movies.values():
-            if title.upper() in movie.primaryTitle.upper() or title in movie.originalTitle.upper():
-                result.append(movie)
+    # def search_title(self, title: str) -> list[Movie]:
+    #     """ Allow to search if string is in  """
+    #     result = [movie for movie in self.movies.values()
+    #               if title in movie.primaryTitle or title in movie.originalTitle]
+    #     return sorted(result, key=lambda x: x.primaryTitle.lower())
+
+    @staticmethod
+    def _quicksort(lst: list[Movie],
+                   attrib: Optional[str] = None,
+                   start: Optional[int] = None,
+                   end: Optional[int] = None) -> None:
+        # Initialise start and end value based on list length
+        if not attrib:
+            attrib = "primaryTitle"
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(lst) - 1
+        if start >= end:
+            return
+
+        # Randomly select an item
+        pivot_index = randrange(start, end + 1)
+        pivot_elem = getattr(lst[pivot_index], attrib)
+        # Put selected item at end of the list
+        lst[end], lst[pivot_index] = lst[pivot_index], lst[end]
+        pointer = start
+
+        # We will move the pointer from start to end
+        for cursor in range(start, end):
+            # We will loop tru movie primaryTitle character per character and sort
+            cursor_elem = getattr(lst[cursor], attrib)
+            for char in range(min(len(cursor_elem), len(pivot_elem))):
+                if cursor_elem[char].lower() == pivot_elem[char].lower():
+                    continue
+
+                if cursor_elem[char].lower() < pivot_elem[char].lower():
+                    lst[cursor], lst[pointer] = lst[pointer], lst[cursor]
+                break
+
+            pointer += 1
+        lst[end], lst[pointer] = lst[pointer], lst[end]
+
+        Repository._quicksort(lst, attrib, start, pointer - 1)
+        Repository._quicksort(lst, attrib, pointer + 1, end)
+
+    def search_title(self, title: str, lst: Optional[list[Movie]] = None) -> list[Movie]:
+        if not lst:
+            lst = list(self.movies.values())
+        result = [movie for movie in lst
+                  if title in movie.primaryTitle or title in movie.originalTitle]
+
         return result
+
+    def search_year(self,
+                    min_year: Optional[int] = None,
+                    max_year: Optional[int] = None,
+                    lst: Optional[list[Movie]] = None) -> list[Movie]:
+        if not lst:
+            lst = list(self.movies.values())
+
+        if min_year and max_year:
+            return [movie for movie in lst
+                    if movie.startYear and min_year <= int(movie.startYear) <= max_year]
+        if min_year:
+            return [movie for movie in lst
+                    if movie.startYear and min_year <= int(movie.startYear)]
+        if max_year:
+            return [movie for movie in lst
+                    if movie.startYear and int(movie.startYear) <= max_year]
+        return []
+
+    def search_rating(self,
+                      min_val: Optional[float] = None,
+                      max_val: Optional[float] = None,
+                      lst: Optional[list[Movie]] = None):
+
+        if not lst:
+            lst = list(self.movies.values())
+
+        if min_val and max_val:
+            return [movie for movie in lst
+                    if movie.rating and min_val <= float(movie.rating.averageRating) <= max_val]
+        if min_val:
+            return [movie for movie in lst
+                    if movie.rating and min_val <= float(movie.rating.averageRating)]
+        if max_val:
+            return [movie for movie in lst
+                    if movie.rating and float(movie.rating.averageRating) <= max_val]
+        return []
