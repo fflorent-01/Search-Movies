@@ -21,21 +21,21 @@ class PromptSelectionWindow:
     """ Open a filedialog window and retrieve information about the file that was selected. """
     def __init__(self,
                  title: str = "Select your file",
-                 priority_type: Optional[list[tuple[str, str]] | tuple] = (),
+                 extension_type: Optional[list[tuple[str, str]] | tuple] = (),
                  initial_dir: str = "/home/" + username + "/Documents"):
         self.title: str = title
-        self._priority_type: Optional[list[tuple[str, str]] | tuple] = priority_type
-        self.priority_type: tuple = self.get_priority_type()
+        self._extension_type: Optional[list[tuple[str, str]] | tuple] = extension_type
+        self.extension_type: tuple = self.get_extension_type()
         self.initial_dir: str = initial_dir
         self.full_path_to_file: str = self.open_selection_window()
 
-    def get_priority_type(self):
-        """ Create the  """
+    def get_extension_type(self):
+        """ Return correct tuple for filtering file per extension """
         filetype = []
-        if self._priority_type and isinstance(self._priority_type, tuple):
-            filetype.append(self._priority_type)
-        if isinstance(self._priority_type, list):
-            filetype.extend(self._priority_type)
+        if self._extension_type and isinstance(self._extension_type, tuple):
+            filetype.append(self._extension_type)
+        if isinstance(self._extension_type, list):
+            filetype.extend(self._extension_type)
         filetype.append(("Other files", "*.*"))
 
         return tuple(filetype)
@@ -44,7 +44,7 @@ class PromptSelectionWindow:
         """ Open file selection window and return full path to file """
         result = filedialog.askopenfilename(
             initialdir=self.initial_dir,
-            filetypes=self.priority_type,
+            filetypes=self.extension_type,
             title=self.title)
         if not result:
             raise NoFileSelected

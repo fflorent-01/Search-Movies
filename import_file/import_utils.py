@@ -14,7 +14,7 @@ class TsvFileSelection(PromptSelectionWindow):
     """ Open a filedialog window to select a file and retrieve its path """
     def __init__(self,
                  title: Optional[str] = None,
-                 priority_type: Optional[tuple | list] = None,
+                 extension_type: Optional[tuple | list] = None,
                  initial_dir: Optional[str] = None):
         kwargs = {}
         if title:
@@ -22,15 +22,15 @@ class TsvFileSelection(PromptSelectionWindow):
         if initial_dir:
             kwargs["initial_dir"] = initial_dir
 
-        if priority_type:
-            if isinstance(priority_type, tuple):
-                priority_type = [priority_type, ("TSV Files (Tab)", ".tsv")]
-                print(priority_type)
-            elif isinstance(priority_type, list):
-                priority_type.append(("TSV Files (Tab)", ".tsv"))
+        if extension_type:
+            if isinstance(extension_type, tuple):
+                extension_type = [extension_type, ("TSV Files (Tab)", ".tsv")]
+                print(extension_type)
+            elif isinstance(extension_type, list):
+                extension_type.append(("TSV Files (Tab)", ".tsv"))
         else:
-            priority_type = ("TSV Files (Tab)", ".tsv")
-        kwargs["priority_type"] = priority_type
+            extension_type = ("TSV Files (Tab)", ".tsv")
+        kwargs["extension_type"] = extension_type
 
         super().__init__(**kwargs)
 

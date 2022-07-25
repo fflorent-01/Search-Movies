@@ -57,9 +57,6 @@ class Repository:
 
     def add_rating(self, rating: Rating) -> None:
         """ Add rating to the movie if it finds a match """
-        if rating.uid not in self.movies:
-            print("Movie not found")
-            return
         if self.movies[rating.uid].rating != rating:
             self.movies[rating.uid] = self.movies[rating.uid]._replace(rating=rating)
 
@@ -84,6 +81,8 @@ class Repository:
         with open(file_path, encoding="utf8") as rating_file:
             reader = csv.DictReader(rating_file)
             for row in reader:
+                for key, elem in row.items():
+                    row[key] = elem.replace(r"\N", "")
                 row["uid"] = row.pop("tconst")
                 self.add_rating(Rating(**row))
 
