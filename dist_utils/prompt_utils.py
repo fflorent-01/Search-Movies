@@ -9,6 +9,19 @@ Various prompt functions
 from dist_utils import warning_msg
 
 
+def prompt_number(msg: str, number_type: [int, float] = int) -> int | float:
+    """ Prompt a value and force specific type return. """
+
+    result = None
+    while not result:
+        try:
+            result = number_type(input(msg))
+        except ValueError:
+            print(f"You must provide a {'decimal' if number_type is float else 'integer'} number.")
+
+    return result
+
+
 def prompt_question(msg: str, answer_list: dict, separator: str = None):
     """
     Prompt a question with possible answer being the first character of the key of a dictionary.

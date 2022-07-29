@@ -3,9 +3,13 @@
 
 """ Contain the Repository class and Movie definition """
 import csv
+import logging
+import unicodedata
+from random import randrange
 from pathlib import Path
 from typing import NamedTuple, Optional
 
+logging.basicConfig(level=logging.DEBUG)
 
 class Rating(NamedTuple):
     """ Contain movie rating """
@@ -38,7 +42,7 @@ class Movie(NamedTuple):
         strings = [pad, title, genre]
         for extra_info in [adult, rating]:
             if extra_info:
-                strings += extra_info
+                strings.append(extra_info)
 
         return "\n".join(strings + [""])
 
@@ -47,6 +51,7 @@ class Repository:
     """
     Repository that will contain the list of all movies and the method to manipulate them
     """
+
     def __init__(self):
         self.movies: dict[str, Movie] = {}
 
@@ -86,10 +91,111 @@ class Repository:
                 row["uid"] = row.pop("tconst")
                 self.add_rating(Rating(**row))
 
-    def search_title(self, title) -> list[Movie]:
-        """ Allow to search if string is in  """
-        result = []
-        for movie in self.movies.values():
-            if title.upper() in movie.primaryTitle.upper() or title in movie.originalTitle.upper():
-                result.append(movie)
+    @staticmethod
+    def _get_attrib(lst: list, attrib: str, index: int):
+        if attrib in ["averageRating", "averageRating"]:
+            return getattr(lst[index].rating, attrib)
+
+        return getattr(lst[index], attrib)
+
+    @staticmethod
+    def quicksort(lst: list[Movie],
+                  attrib: Optional[str] = "primaryTitle",
+                  reverse: bool = False,
+                  start: Optional[int] = 0,
+                  end: Optional[int] = None) -> None:
+        """
+        Quicksort algorythm.
+
+        - Allow choice of the attribute to be sorted
+        - Allow reverse order
+        """
+
+        # Initialize end value
+        if end is None:
+            end = len(lst) - 1
+        # Base case
+        if start >= end or len(lst) == 1:
+            return
+
+        def compare(val_1, val_2):
+            if reverse:
+                return val_1 > val_2
+            return val_1 < val_2
+
+        def normalize_string(string: str) -> str:
+            # https://stackoverflow.com/a/517974
+            nfkd_form = unicodedata.normalize('NFKD', string)
+            return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
+
+        # Randomly select an item
+        pivot_index = randrange(start, end + 1)
+        # Ideally this would be decoupled, but I got to move on
+        pivot_value = normalize_string(Repository._get_attrib(lst, attrib, pivot_index)).upper()
+
+        # Put selected item at end of the list
+        lst[end], lst[pivot_index] = lst[pivot_index], lst[end]
+
+        pointer = start
+        # Move the pointer from start to end
+        for cursor in range(start, end):
+            cursor_value = normalize_string(Repository._get_attrib(lst, attrib, cursor)).upper()
+
+            if compare(cursor_value, pivot_value):
+                lst[cursor], lst[pointer] = lst[pointer], lst[cursor]
+                pointer += 1
+
+        lst[end], lst[pointer] = lst[pointer], lst[end]
+
+        Repository.quicksort(lst, attrib, reverse, start, pointer - 1)
+        Repository.quicksort(lst, attrib, reverse, pointer + 1, end)
+
+    def search_title(self, title: str, lst: Optional[list[Movie]] = None) -> list[Movie]:
+        """ Return list of movies that match the provided string. """
+
+        if not lst:
+            lst = list(self.movies.values())
+        result = [movie for movie in lst
+                  if title in movie.primaryTitle or title in movie.originalTitle]
+
         return result
+
+    def search_year(self,
+                    min_year: Optional[int] = None,
+                    max_year: Optional[int] = None,
+                    lst: Optional[list[Movie]] = None) -> list[Movie]:
+        """ Return a list of movies that have startYear within specified boundaries. """
+
+        if not lst:
+            lst = list(self.movies.values())
+
+        if min_year and max_year:
+            return [movie for movie in lst
+                    if movie.startYear and min_year <= int(movie.startYear) <= max_year]
+        if min_year:
+            return [movie for movie in lst
+                    if movie.startYear and min_year <= int(movie.startYear)]
+        if max_year:
+            return [movie for movie in lst
+                    if movie.startYear and int(movie.startYear) <= max_year]
+        return []
+
+    def search_rating(self,
+                      min_val: Optional[float] = None,
+                      max_val: Optional[float] = None,
+                      lst: Optional[list[Movie]] = None) -> list[Movie]:
+        """ Return a list of movies that have rating.averageRating within specified boundaries. """
+
+        if not lst:
+            lst = list(self.movies.values())
+
+        if min_val and max_val:
+            return [movie for movie in lst
+                    if movie.rating and min_val <= float(movie.rating.averageRating) <= max_val]
+        if min_val:
+            return [movie for movie in lst
+                    if movie.rating and min_val <= float(movie.rating.averageRating)]
+        if max_val:
+            return [movie for movie in lst
+                    if movie.rating and float(movie.rating.averageRating) <= max_val]
+        return []
