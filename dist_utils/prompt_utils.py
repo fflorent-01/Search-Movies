@@ -9,7 +9,9 @@ Various prompt functions
 from dist_utils import warning_msg
 
 
-def prompt_number(msg: str, number_type: [int, float] = int):
+def prompt_number(msg: str, number_type: [int, float] = int) -> int | float:
+    """ Prompt a value and force specific type return. """
+
     result = None
     while not result:
         try:

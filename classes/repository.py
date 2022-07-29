@@ -3,10 +3,13 @@
 
 """ Contain the Repository class and Movie definition """
 import csv
+import logging
+import unicodedata
 from random import randrange
 from pathlib import Path
 from typing import NamedTuple, Optional
 
+logging.basicConfig(level=logging.DEBUG)
 
 class Rating(NamedTuple):
     """ Contain movie rating """
@@ -48,6 +51,7 @@ class Repository:
     """
     Repository that will contain the list of all movies and the method to manipulate them
     """
+
     def __init__(self):
         self.movies: dict[str, Movie] = {}
 
@@ -87,53 +91,68 @@ class Repository:
                 row["uid"] = row.pop("tconst")
                 self.add_rating(Rating(**row))
 
-    # def search_title(self, title: str) -> list[Movie]:
-    #     """ Allow to search if string is in  """
-    #     result = [movie for movie in self.movies.values()
-    #               if title in movie.primaryTitle or title in movie.originalTitle]
-    #     return sorted(result, key=lambda x: x.primaryTitle.lower())
+    @staticmethod
+    def _get_attrib(lst: list, attrib: str, index: int):
+        if attrib in ["averageRating", "averageRating"]:
+            return getattr(lst[index].rating, attrib)
+
+        return getattr(lst[index], attrib)
 
     @staticmethod
-    def _quicksort(lst: list[Movie],
-                   attrib: Optional[str] = None,
-                   start: Optional[int] = None,
-                   end: Optional[int] = None) -> None:
-        # Initialise start and end value based on list length
-        if not attrib:
-            attrib = "primaryTitle"
-        if start is None:
-            start = 0
+    def quicksort(lst: list[Movie],
+                  attrib: Optional[str] = "primaryTitle",
+                  reverse: bool = False,
+                  start: Optional[int] = 0,
+                  end: Optional[int] = None) -> None:
+        """
+        Quicksort algorythm.
+
+        - Allow choice of the attribute to be sorted
+        - Allow reverse order
+        """
+
+        # Initialize end value
         if end is None:
             end = len(lst) - 1
-        if start >= end:
+        # Base case
+        if start >= end or len(lst) == 1:
             return
+
+        def compare(val_1, val_2):
+            if reverse:
+                return val_1 > val_2
+            return val_1 < val_2
+
+        def normalize_string(string: str) -> str:
+            # https://stackoverflow.com/a/517974
+            nfkd_form = unicodedata.normalize('NFKD', string)
+            return "".join([c for c in nfkd_form if not unicodedata.combining(c)])
 
         # Randomly select an item
         pivot_index = randrange(start, end + 1)
-        pivot_elem = getattr(lst[pivot_index], attrib)
+        # Ideally this would be decoupled, but I got to move on
+        pivot_value = normalize_string(Repository._get_attrib(lst, attrib, pivot_index)).upper()
+
         # Put selected item at end of the list
         lst[end], lst[pivot_index] = lst[pivot_index], lst[end]
+
         pointer = start
-
-        # We will move the pointer from start to end
+        # Move the pointer from start to end
         for cursor in range(start, end):
-            # We will loop tru movie primaryTitle character per character and sort
-            cursor_elem = getattr(lst[cursor], attrib)
-            for char in range(min(len(cursor_elem), len(pivot_elem))):
-                if cursor_elem[char].lower() == pivot_elem[char].lower():
-                    continue
+            cursor_value = normalize_string(Repository._get_attrib(lst, attrib, cursor)).upper()
 
-                if cursor_elem[char].lower() < pivot_elem[char].lower():
-                    lst[cursor], lst[pointer] = lst[pointer], lst[cursor]
-                break
+            if compare(cursor_value, pivot_value):
+                lst[cursor], lst[pointer] = lst[pointer], lst[cursor]
+                pointer += 1
 
-            pointer += 1
         lst[end], lst[pointer] = lst[pointer], lst[end]
 
-        Repository._quicksort(lst, attrib, start, pointer - 1)
-        Repository._quicksort(lst, attrib, pointer + 1, end)
+        Repository.quicksort(lst, attrib, reverse, start, pointer - 1)
+        Repository.quicksort(lst, attrib, reverse, pointer + 1, end)
 
     def search_title(self, title: str, lst: Optional[list[Movie]] = None) -> list[Movie]:
+        """ Return list of movies that match the provided string. """
+
         if not lst:
             lst = list(self.movies.values())
         result = [movie for movie in lst
@@ -145,6 +164,8 @@ class Repository:
                     min_year: Optional[int] = None,
                     max_year: Optional[int] = None,
                     lst: Optional[list[Movie]] = None) -> list[Movie]:
+        """ Return a list of movies that have startYear within specified boundaries. """
+
         if not lst:
             lst = list(self.movies.values())
 
@@ -162,7 +183,8 @@ class Repository:
     def search_rating(self,
                       min_val: Optional[float] = None,
                       max_val: Optional[float] = None,
-                      lst: Optional[list[Movie]] = None):
+                      lst: Optional[list[Movie]] = None) -> list[Movie]:
+        """ Return a list of movies that have rating.averageRating within specified boundaries. """
 
         if not lst:
             lst = list(self.movies.values())
